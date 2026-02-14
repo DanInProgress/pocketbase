@@ -27,7 +27,6 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/dop251/base64dec v0.0.0-20231022112746-c6c9f9a96217 // indirect
-	github.com/dop251/goja_nodejs v0.0.0-20250921061224-8763c0e155c9
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/google/pprof v0.0.0-20260115054156-294ebfa9ad83 // indirect
@@ -50,4 +49,6 @@ require (
 	modernc.org/memory v1.11.0 // indirect
 )
 
-replace github.com/ohayocorp/sobek_nodejs => ./vendor/github.com/ohayocorp/sobek_nodejs
+replace github.com/dop251/goja_nodejs => ./internal/ext/github.com/ohayocorp/sobek_nodejs
+
+replace github.com/ohayocorp/sobek_nodejs => ./internal/ext/github.com/ohayocorp/sobek_nodejs

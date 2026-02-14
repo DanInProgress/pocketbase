@@ -10,6 +10,7 @@ package jsvm
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -21,13 +22,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
+	"github.com/fsnotify/fsnotify"
 	"github.com/grafana/sobek"
 	"github.com/ohayocorp/sobek_nodejs/buffer"
 	"github.com/ohayocorp/sobek_nodejs/console"
 	"github.com/ohayocorp/sobek_nodejs/process"
 	"github.com/ohayocorp/sobek_nodejs/require"
-	"github.com/fatih/color"
-	"github.com/fsnotify/fsnotify"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/jsvm/internal/types/generated"
 	"github.com/pocketbase/pocketbase/tools/template"
@@ -309,10 +310,22 @@ func (p *plugin) registerHooks() error {
 	}
 
 	// initiliaze the executor vms
-	executors := newPool(p.config.HooksPoolSize, func() *sobek.Runtime {
+	executors := newPool(p.config.HooksPoolSize, func() (*sobek.Runtime, *EventLoop) {
 		executor := sobek.New()
+		executor.SetFieldNameMapper(FieldMapper{})
+
+		// Create the event loop
+		eventLoop := NewEventLoop(executor, context.Background())
+
+		// Setup Timers
+		timers := NewTimers(executor, eventLoop)
+		if err := timers.SetupGlobally(); err != nil {
+			panic(err)
+		}
+
+		// Bind the event loop to the runtime
 		sharedBinds(executor)
-		return executor
+		return executor, eventLoop
 	})
 
 	// initialize the loader vm

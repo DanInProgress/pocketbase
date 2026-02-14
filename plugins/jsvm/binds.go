@@ -17,9 +17,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/sobek"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/grafana/sobek"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
@@ -131,13 +131,13 @@ func cronBinds(app core.App, loader *sobek.Runtime, executors *vmsPool) {
 
 	// register the removal helper also in the executors to allow removing cron jobs from everywhere
 	oldFactory := executors.factory
-	executors.factory = func() *sobek.Runtime {
-		vm := oldFactory()
+	executors.factory = func() (*sobek.Runtime, *EventLoop) {
+		vm, eventLoop := oldFactory()
 
 		vm.Set("cronAdd", cronAdd)
 		vm.Set("cronRemove", cronRemove)
 
-		return vm
+		return vm, eventLoop
 	}
 	for _, item := range executors.items {
 		item.vm.Set("cronAdd", cronAdd)

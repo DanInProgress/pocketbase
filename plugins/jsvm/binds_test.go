@@ -2,6 +2,7 @@ package jsvm
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/sobek"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/grafana/sobek"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
@@ -1560,7 +1561,10 @@ func TestCronBindsCount(t *testing.T) {
 
 	vm := sobek.New()
 
-	pool := newPool(1, func() *sobek.Runtime { return sobek.New() })
+	pool := newPool(1, func() (*sobek.Runtime, *EventLoop) {
+		poolVM := sobek.New()
+		return poolVM, NewEventLoop(poolVM, context.Background())
+	})
 
 	cronBinds(app, vm, pool)
 
@@ -1590,17 +1594,17 @@ func TestHooksBinds(t *testing.T) {
 		Called int
 	}{}
 
-	vmFactory := func() *sobek.Runtime {
+	vmFactory := func() (*sobek.Runtime, *EventLoop) {
 		vm := sobek.New()
 		baseBinds(vm)
 		vm.Set("$app", app)
 		vm.Set("result", result)
-		return vm
+		return vm, NewEventLoop(vm, context.Background())
 	}
 
 	pool := newPool(1, vmFactory)
 
-	vm := vmFactory()
+	vm, _ := vmFactory()
 	hooksBinds(app, vm, pool)
 
 	_, err := vm.RunString(`
@@ -1676,17 +1680,17 @@ func TestHooksExceptionUnwrapping(t *testing.T) {
 
 	goErr := errors.New("test")
 
-	vmFactory := func() *sobek.Runtime {
+	vmFactory := func() (*sobek.Runtime, *EventLoop) {
 		vm := sobek.New()
 		baseBinds(vm)
 		vm.Set("$app", app)
 		vm.Set("goErr", goErr)
-		return vm
+		return vm, NewEventLoop(vm, context.Background())
 	}
 
 	pool := newPool(1, vmFactory)
 
-	vm := vmFactory()
+	vm, _ := vmFactory()
 	hooksBinds(app, vm, pool)
 
 	_, err := vm.RunString(`
@@ -1730,18 +1734,18 @@ func TestRouterBinds(t *testing.T) {
 		GlobalMiddlewareCalls int
 	}{}
 
-	vmFactory := func() *sobek.Runtime {
+	vmFactory := func() (*sobek.Runtime, *EventLoop) {
 		vm := sobek.New()
 		baseBinds(vm)
 		apisBinds(vm)
 		vm.Set("$app", app)
 		vm.Set("result", result)
-		return vm
+		return vm, NewEventLoop(vm, context.Background())
 	}
 
 	pool := newPool(1, vmFactory)
 
-	vm := vmFactory()
+	vm, _ := vmFactory()
 	routerBinds(app, vm, pool)
 
 	_, err := vm.RunString(`
