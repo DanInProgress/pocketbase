@@ -3,23 +3,23 @@ package jsvm
 import (
 	"sync"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 )
 
 type poolItem struct {
 	mux  sync.Mutex
 	busy bool
-	vm   *goja.Runtime
+	vm   *sobek.Runtime
 }
 
 type vmsPool struct {
 	mux     sync.RWMutex
-	factory func() *goja.Runtime
+	factory func() *sobek.Runtime
 	items   []*poolItem
 }
 
 // newPool creates a new pool with pre-warmed vms generated from the specified factory.
-func newPool(size int, factory func() *goja.Runtime) *vmsPool {
+func newPool(size int, factory func() *sobek.Runtime) *vmsPool {
 	pool := &vmsPool{
 		factory: factory,
 		items:   make([]*poolItem, size),
@@ -35,7 +35,7 @@ func newPool(size int, factory func() *goja.Runtime) *vmsPool {
 
 // run executes "call" with a vm created from the pool
 // (either from the buffer or a new one if all buffered vms are busy)
-func (p *vmsPool) run(call func(vm *goja.Runtime) error) error {
+func (p *vmsPool) run(call func(vm *sobek.Runtime) error) error {
 	p.mux.RLock()
 
 	// try to find a free item
