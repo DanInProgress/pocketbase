@@ -17,7 +17,8 @@ import (
 const ModuleName = "process"
 
 type Process struct {
-	env map[string]string
+	env  map[string]string
+	argv []string
 }
 
 func Require(runtime *sobek.Runtime, module *sobek.Object) {
@@ -32,6 +33,7 @@ func Require(runtime *sobek.Runtime, module *sobek.Object) {
 
 	o := module.Get("exports").(*sobek.Object)
 	o.Set("env", p.env)
+	o.Set("argv", p.argv)
 }
 
 func Enable(runtime *sobek.Runtime) {
