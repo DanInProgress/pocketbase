@@ -9,6 +9,7 @@ import (
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/plugins/esmvm"
 	"github.com/pocketbase/pocketbase/plugins/ghupdate"
 	"github.com/pocketbase/pocketbase/plugins/jsvm"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
@@ -79,19 +80,36 @@ func main() {
 		"fallback the request to index.html on missing static path, e.g. when pretty urls are used with SPA",
 	)
 
+	var experimentalESMSupport bool
+	app.RootCmd.PersistentFlags().BoolVar(
+		&experimentalESMSupport,
+		"experimentalESMSupport",
+		false,
+		"enable experimental ESM module support using the esmvm plugin (unstable)", // TODO: remove when MVP is completed.
+	)
+
 	app.RootCmd.ParseFlags(os.Args[1:])
 
 	// ---------------------------------------------------------------
 	// Plugins and hooks:
 	// ---------------------------------------------------------------
 
-	// load jsvm (pb_hooks and pb_migrations)
-	jsvm.MustRegister(app, jsvm.Config{
-		MigrationsDir: migrationsDir,
-		HooksDir:      hooksDir,
-		HooksWatch:    hooksWatch,
-		HooksPoolSize: hooksPool,
-	})
+	// load JS runtime plugin (jsvm - stable, or esmvm - experimental ESM)
+	if experimentalESMSupport {
+		esmvm.MustRegister(app, esmvm.Config{
+			MigrationsDir: migrationsDir,
+			HooksDir:      hooksDir,
+			HooksWatch:    hooksWatch,
+			HooksPoolSize: hooksPool,
+		})
+	} else {
+		jsvm.MustRegister(app, jsvm.Config{
+			MigrationsDir: migrationsDir,
+			HooksDir:      hooksDir,
+			HooksWatch:    hooksWatch,
+			HooksPoolSize: hooksPool,
+		})
+	}
 
 	// migrate command (with js templates)
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
