@@ -12,12 +12,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"github.com/pocketbase/pocketbase/plugins/esmvm/internal/extern/goja_nodejs/require"
 )
 
 func TestProcessEnvStructure(t *testing.T) {
-	vm := goja.New()
+	vm := sobek.New()
 
 	new(require.Registry).Enable(vm)
 	Enable(vm)
@@ -35,7 +35,7 @@ func TestProcessEnvValuesArtificial(t *testing.T) {
 	os.Setenv("GOJA_IS_AWESOME", "true")
 	defer os.Unsetenv("GOJA_IS_AWESOME")
 
-	vm := goja.New()
+	vm := sobek.New()
 
 	new(require.Registry).Enable(vm)
 	Enable(vm)
@@ -52,7 +52,7 @@ func TestProcessEnvValuesArtificial(t *testing.T) {
 }
 
 func TestProcessEnvValuesBrackets(t *testing.T) {
-	vm := goja.New()
+	vm := sobek.New()
 
 	new(require.Registry).Enable(vm)
 	Enable(vm)

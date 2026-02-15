@@ -21,9 +21,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dop251/goja"
 	"github.com/fatih/color"
 	"github.com/fsnotify/fsnotify"
+	"github.com/grafana/sobek"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/esmvm/internal/extern/goja_nodejs/buffer"
 	"github.com/pocketbase/pocketbase/plugins/esmvm/internal/extern/goja_nodejs/console"
@@ -58,7 +58,7 @@ type Config struct {
 	// OnInit is an optional function that will be called
 	// after a JS runtime is initialized, allowing you to
 	// attach custom Go variables and functions.
-	OnInit func(vm *goja.Runtime)
+	OnInit func(vm *sobek.Runtime)
 
 	// HooksWatch enables auto app restarts when a JS app hook file changes.
 	//
@@ -78,10 +78,10 @@ type Config struct {
 	// HookdsDir file ending in ".pb.js" or ".pb.ts" (the last one is to enforce IDE linters).
 	HooksFilesPattern string
 
-	// HooksPoolSize specifies how many goja.Runtime instances to prewarm
+	// HooksPoolSize specifies how many sobek.Runtime instances to prewarm
 	// and keep for the JS app hooks gorotines execution.
 	//
-	// Zero or negative value means that it will create a new goja.Runtime
+	// Zero or negative value means that it will create a new sobek.Runtime
 	// on every fired goroutine.
 	HooksPoolSize int
 
@@ -110,7 +110,7 @@ type Config struct {
 // Example usage:
 //
 //	jsvm.MustRegister(app, jsvm.Config{
-//		OnInit: func(vm *goja.Runtime) {
+//		OnInit: func(vm *sobek.Runtime) {
 //			// register custom bindings
 //			vm.Set("myCustomVar", 123)
 //		},
@@ -193,7 +193,7 @@ func (p *plugin) registerMigrations() error {
 	templateRegistry := template.NewRegistry()
 
 	for file, content := range files {
-		vm := goja.New()
+		vm := sobek.New()
 
 		registry.Enable(vm)
 		console.Enable(vm)
@@ -282,7 +282,7 @@ func (p *plugin) registerHooks() error {
 	requireRegistry := new(require.Registry)
 	templateRegistry := template.NewRegistry()
 
-	sharedBinds := func(vm *goja.Runtime) {
+	sharedBinds := func(vm *sobek.Runtime) {
 		requireRegistry.Enable(vm)
 		console.Enable(vm)
 		process.Enable(vm)
@@ -309,14 +309,14 @@ func (p *plugin) registerHooks() error {
 	}
 
 	// initiliaze the executor vms
-	executors := newPool(p.config.HooksPoolSize, func() *goja.Runtime {
-		executor := goja.New()
+	executors := newPool(p.config.HooksPoolSize, func() *sobek.Runtime {
+		executor := sobek.New()
 		sharedBinds(executor)
 		return executor
 	})
 
 	// initialize the loader vm
-	loader := goja.New()
+	loader := sobek.New()
 	sharedBinds(loader)
 	hooksBinds(p.app, loader, executors)
 	cronBinds(p.app, loader, executors)

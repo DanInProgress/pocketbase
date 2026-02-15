@@ -11,80 +11,80 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"github.com/pocketbase/pocketbase/plugins/esmvm/internal/extern/goja_nodejs/errors"
 )
 
-func RequiredIntegerArgument(r *goja.Runtime, call goja.FunctionCall, name string, argIndex int) int64 {
+func RequiredIntegerArgument(r *sobek.Runtime, call sobek.FunctionCall, name string, argIndex int) int64 {
 	arg := call.Argument(argIndex)
-	if goja.IsNumber(arg) {
+	if sobek.IsNumber(arg) {
 		return arg.ToInteger()
 	}
-	if goja.IsUndefined(arg) {
+	if sobek.IsUndefined(arg) {
 		panic(errors.NewTypeError(r, errors.ErrCodeInvalidArgType, "The \"%s\" argument is required.", name))
 	}
 
 	panic(errors.NewArgumentNotNumberTypeError(r, name))
 }
 
-func RequiredStrictIntegerArgument(r *goja.Runtime, call goja.FunctionCall, name string, argIndex int) int64 {
+func RequiredStrictIntegerArgument(r *sobek.Runtime, call sobek.FunctionCall, name string, argIndex int) int64 {
 	arg := call.Argument(argIndex)
-	if goja.IsNumber(arg) {
+	if sobek.IsNumber(arg) {
 		val := arg.ToFloat()
 		if val != math.Trunc(val) {
 			panic(errors.NewRangeError(r, errors.ErrCodeOutOfRange, "The value of %q is out of range. It must be an integer.", name))
 		}
 		return int64(val)
 	}
-	if goja.IsUndefined(arg) {
+	if sobek.IsUndefined(arg) {
 		panic(errors.NewTypeError(r, errors.ErrCodeInvalidArgType, "The %q argument is required.", name))
 	}
 
 	panic(errors.NewArgumentNotNumberTypeError(r, name))
 }
 
-func RequiredFloatArgument(r *goja.Runtime, call goja.FunctionCall, name string, argIndex int) float64 {
+func RequiredFloatArgument(r *sobek.Runtime, call sobek.FunctionCall, name string, argIndex int) float64 {
 	arg := call.Argument(argIndex)
-	if goja.IsNumber(arg) {
+	if sobek.IsNumber(arg) {
 		return arg.ToFloat()
 	}
-	if goja.IsUndefined(arg) {
+	if sobek.IsUndefined(arg) {
 		panic(errors.NewTypeError(r, errors.ErrCodeInvalidArgType, "The \"%s\" argument is required.", name))
 	}
 
 	panic(errors.NewArgumentNotNumberTypeError(r, name))
 }
 
-func CoercedIntegerArgument(call goja.FunctionCall, argIndex int, defaultValue int64, typeMismatchValue int64) int64 {
+func CoercedIntegerArgument(call sobek.FunctionCall, argIndex int, defaultValue int64, typeMismatchValue int64) int64 {
 	arg := call.Argument(argIndex)
-	if goja.IsNumber(arg) {
+	if sobek.IsNumber(arg) {
 		return arg.ToInteger()
 	}
-	if goja.IsUndefined(arg) {
+	if sobek.IsUndefined(arg) {
 		return defaultValue
 	}
 
 	return typeMismatchValue
 }
 
-func OptionalIntegerArgument(r *goja.Runtime, call goja.FunctionCall, name string, argIndex int, defaultValue int64) int64 {
+func OptionalIntegerArgument(r *sobek.Runtime, call sobek.FunctionCall, name string, argIndex int, defaultValue int64) int64 {
 	arg := call.Argument(argIndex)
-	if goja.IsNumber(arg) {
+	if sobek.IsNumber(arg) {
 		return arg.ToInteger()
 	}
-	if goja.IsUndefined(arg) {
+	if sobek.IsUndefined(arg) {
 		return defaultValue
 	}
 
 	panic(errors.NewArgumentNotNumberTypeError(r, name))
 }
 
-func RequiredBigIntArgument(r *goja.Runtime, call goja.FunctionCall, name string, argIndex int) *big.Int {
+func RequiredBigIntArgument(r *sobek.Runtime, call sobek.FunctionCall, name string, argIndex int) *big.Int {
 	arg := call.Argument(argIndex)
-	if goja.IsUndefined(arg) {
+	if sobek.IsUndefined(arg) {
 		panic(errors.NewTypeError(r, errors.ErrCodeInvalidArgType, "The \"%s\" argument is required.", name))
 	}
-	if !goja.IsBigInt(arg) {
+	if !sobek.IsBigInt(arg) {
 		panic(errors.NewArgumentNotBigIntTypeError(r, name))
 	}
 
@@ -95,19 +95,19 @@ func RequiredBigIntArgument(r *goja.Runtime, call goja.FunctionCall, name string
 	return n
 }
 
-func RequiredStringArgument(r *goja.Runtime, call goja.FunctionCall, name string, argIndex int) string {
+func RequiredStringArgument(r *sobek.Runtime, call sobek.FunctionCall, name string, argIndex int) string {
 	arg := call.Argument(argIndex)
-	if goja.IsString(arg) {
+	if sobek.IsString(arg) {
 		return arg.String()
 	}
-	if goja.IsUndefined(arg) {
+	if sobek.IsUndefined(arg) {
 		panic(errors.NewTypeError(r, errors.ErrCodeInvalidArgType, "The \"%s\" argument is required.", name))
 	}
 
 	panic(errors.NewArgumentNotStringTypeError(r, name))
 }
 
-func RequiredArrayArgument(r *goja.Runtime, call goja.FunctionCall, name string, argIndex int) goja.Value {
+func RequiredArrayArgument(r *sobek.Runtime, call sobek.FunctionCall, name string, argIndex int) sobek.Value {
 	arg := call.Argument(argIndex)
 	if arg.ExportType() != reflect.TypeOf(([]any)(nil)) {
 		panic(errors.NewNotCorrectTypeError(r, name, "Array"))

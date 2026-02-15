@@ -9,12 +9,12 @@ package console
 import (
 	"testing"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"github.com/pocketbase/pocketbase/plugins/esmvm/internal/extern/goja_nodejs/require"
 )
 
 func TestConsole(t *testing.T) {
-	vm := goja.New()
+	vm := sobek.New()
 
 	new(require.Registry).Enable(vm)
 	Enable(vm)
@@ -52,7 +52,7 @@ func TestConsoleWithPrinter(t *testing.T) {
 		StderrPrint: func(s string) { stderrStr += s },
 	}
 
-	vm := goja.New()
+	vm := sobek.New()
 
 	registry := new(require.Registry)
 	registry.Enable(vm)

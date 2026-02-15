@@ -12,12 +12,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"github.com/pocketbase/pocketbase/plugins/esmvm/internal/extern/goja_nodejs/require"
 )
 
 func TestBufferFrom(t *testing.T) {
-	vm := goja.New()
+	vm := sobek.New()
 	new(require.Registry).Enable(vm)
 
 	// Tests borrowed from https://github.com/nodejs/node/blob/8e561a3d0672f7538e647019fe9e5aa0aed20d2d/test/parallel/test-buffer-concat.js
@@ -82,7 +82,7 @@ func TestBufferFrom(t *testing.T) {
 }
 
 func TestFromBase64(t *testing.T) {
-	vm := goja.New()
+	vm := sobek.New()
 	new(require.Registry).Enable(vm)
 
 	_, err := vm.RunString(`
@@ -130,7 +130,7 @@ func TestFromBase64(t *testing.T) {
 }
 
 func TestWrapBytes(t *testing.T) {
-	vm := goja.New()
+	vm := sobek.New()
 	new(require.Registry).Enable(vm)
 	b := []byte{1, 2, 3}
 	buffer := GetApi(vm)
@@ -154,7 +154,7 @@ func TestWrapBytes(t *testing.T) {
 }
 
 func TestBuffer_alloc(t *testing.T) {
-	vm := goja.New()
+	vm := sobek.New()
 	new(require.Registry).Enable(vm)
 
 	_, err := vm.RunString(`
@@ -239,7 +239,7 @@ func TestBuffer_alloc(t *testing.T) {
 }
 
 func TestBuffer_concat(t *testing.T) {
-	vm := goja.New()
+	vm := sobek.New()
 	new(require.Registry).Enable(vm)
 	_, err := vm.RunString(`
 	const Buffer = require("node:buffer").Buffer;
@@ -349,7 +349,7 @@ type testCase struct {
 }
 
 func runTestCases(t *testing.T, tcs []testCase) {
-	vm := goja.New()
+	vm := sobek.New()
 	new(require.Registry).Enable(vm)
 	_, err := vm.RunScript("testdata/assertions.js", assertionsSource)
 	if err != nil {
