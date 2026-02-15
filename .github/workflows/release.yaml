@@ -42,6 +42,11 @@ jobs:
       # # but its here to ensure that it wasn't forgotten to be executed.
       # - name: Generate jsvm types
       #   run: go run ./plugins/jsvm/internal/types/types.go
+      #
+      # # Similar to the above, the esmvm types are pregenerated locally
+      # # but its here to ensure that it wasn't forgotten to be executed.
+      # - name: Generate esmvm types
+      #   run: go run ./plugins/esmvm/internal/types/types.go
 
       - name: Run tests
         run: go test ./...
