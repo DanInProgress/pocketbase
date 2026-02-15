@@ -7,27 +7,31 @@ import (
 )
 
 type poolItem struct {
-	mux  sync.Mutex
-	busy bool
-	vm   *sobek.Runtime
+	mux       sync.Mutex
+	busy      bool
+	vm        *sobek.Runtime
+	eventLoop *EventLoop
 }
 
 type vmsPool struct {
 	mux     sync.RWMutex
-	factory func() *sobek.Runtime
+	factory func() (*sobek.Runtime, *EventLoop)
 	items   []*poolItem
 }
 
 // newPool creates a new pool with pre-warmed vms generated from the specified factory.
-func newPool(size int, factory func() *sobek.Runtime) *vmsPool {
+func newPool(size int, factory func() (*sobek.Runtime, *EventLoop)) *vmsPool {
 	pool := &vmsPool{
 		factory: factory,
 		items:   make([]*poolItem, size),
 	}
 
 	for i := 0; i < size; i++ {
-		vm := pool.factory()
-		pool.items[i] = &poolItem{vm: vm}
+		vm, eventLoop := pool.factory()
+		pool.items[i] = &poolItem{
+			vm:        vm,
+			eventLoop: eventLoop,
+		}
 	}
 
 	return pool
@@ -59,15 +63,35 @@ func (p *vmsPool) run(call func(vm *sobek.Runtime) error) error {
 	// note: if turned out not efficient we may change this in the future
 	// by adding the created item in the pool with some timer for removal
 	if freeItem == nil {
-		return call(p.factory())
+		vm, eventLoop := p.factory()
+		err := eventLoop.Start(func() error {
+			return call(vm)
+		})
+		return err
 	}
 
-	execErr := call(freeItem.vm)
+	// Execute with event loop
+	var execErr error
+	loopErr := freeItem.eventLoop.Start(func() error {
+		execErr = call(freeItem.vm)
+		return execErr
+	})
+
+	// Wait for event loop to drain
+	if drainErr := freeItem.eventLoop.WaitOnRegistered(); drainErr != nil {
+		freeItem.mux.Lock()
+		freeItem.busy = false
+		freeItem.mux.Unlock()
+		return drainErr
+	}
 
 	// "free" the vm
 	freeItem.mux.Lock()
 	freeItem.busy = false
 	freeItem.mux.Unlock()
 
+	if loopErr != nil {
+		return loopErr
+	}
 	return execErr
 }

@@ -10,6 +10,7 @@ package esmvm
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -194,6 +195,12 @@ func (p *plugin) registerMigrations() error {
 
 	for file, content := range files {
 		vm := sobek.New()
+		eventLoop := NewEventLoop(vm, context.Background())
+
+		timers := NewTimers(vm, eventLoop)
+		if err := timers.SetupGlobally(); err != nil {
+			return fmt.Errorf("failed to setup timers for migration %s: %w", file, err)
+		}
 
 		registry.Enable(vm)
 		console.Enable(vm)
@@ -309,10 +316,21 @@ func (p *plugin) registerHooks() error {
 	}
 
 	// initiliaze the executor vms
-	executors := newPool(p.config.HooksPoolSize, func() *sobek.Runtime {
+	executors := newPool(p.config.HooksPoolSize, func() (*sobek.Runtime, *EventLoop) {
 		executor := sobek.New()
+		executor.SetFieldNameMapper(FieldMapper{})
+
+		// Create the event loop
+		eventLoop := NewEventLoop(executor, context.Background())
+
+		// Setup Timers
+		timers := NewTimers(executor, eventLoop)
+		if err := timers.SetupGlobally(); err != nil {
+			panic(err)
+		}
+
 		sharedBinds(executor)
-		return executor
+		return executor, eventLoop
 	})
 
 	// initialize the loader vm
