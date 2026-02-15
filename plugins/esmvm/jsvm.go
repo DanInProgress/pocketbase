@@ -22,13 +22,13 @@ import (
 	"time"
 
 	"github.com/dop251/goja"
-	"github.com/dop251/goja_nodejs/buffer"
-	"github.com/dop251/goja_nodejs/console"
-	"github.com/dop251/goja_nodejs/process"
-	"github.com/dop251/goja_nodejs/require"
 	"github.com/fatih/color"
 	"github.com/fsnotify/fsnotify"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/plugins/esmvm/internal/extern/goja_nodejs/buffer"
+	"github.com/pocketbase/pocketbase/plugins/esmvm/internal/extern/goja_nodejs/console"
+	"github.com/pocketbase/pocketbase/plugins/esmvm/internal/extern/goja_nodejs/process"
+	"github.com/pocketbase/pocketbase/plugins/esmvm/internal/extern/goja_nodejs/require"
 	"github.com/pocketbase/pocketbase/plugins/esmvm/internal/types/generated"
 	"github.com/pocketbase/pocketbase/tools/template"
 )
