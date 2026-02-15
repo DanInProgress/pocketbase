@@ -75,8 +75,8 @@ type Config struct {
 	// HooksFilesPattern specifies a regular expression pattern that
 	// identify which file to load by the hook vm(s).
 	//
-	// If not set it fallbacks to `^.*(\.pb\.js|\.pb\.ts)$`, aka. any
-	// HookdsDir file ending in ".pb.js" or ".pb.ts" (the last one is to enforce IDE linters).
+	// If not set it fallbacks to `^.*(\.pb\.js|\.pb\.mjs|\.pb\.ts)$`, aka. any
+	// HookdsDir file ending in ".pb.js", ".pb.mjs" or ".pb.ts" (the last one is to enforce IDE linters).
 	HooksFilesPattern string
 
 	// HooksPoolSize specifies how many sobek.Runtime instances to prewarm
@@ -91,8 +91,8 @@ type Config struct {
 	// If not set it fallbacks to a relative "pb_data/../pb_migrations" directory.
 	MigrationsDir string
 
-	// If not set it fallbacks to `^.*(\.js|\.ts)$`, aka. any MigrationDir file
-	// ending in ".js" or ".ts" (the last one is to enforce IDE linters).
+	// If not set it fallbacks to `^.*(\.js|\.mjs|\.ts)$`, aka. any MigrationDir file
+	// ending in ".js", ".mjs" or ".ts" (the last one is to enforce IDE linters).
 	MigrationsFilesPattern string
 
 	// TypesDir specifies the directory where to store the embedded
@@ -135,11 +135,11 @@ func Register(app core.App, config Config) error {
 	}
 
 	if p.config.HooksFilesPattern == "" {
-		p.config.HooksFilesPattern = `^.*(\.pb\.js|\.pb\.ts)$`
+		p.config.HooksFilesPattern = `^.*(\.pb\.js|\.pb\.mjs|\.pb\.ts)$`
 	}
 
 	if p.config.MigrationsFilesPattern == "" {
-		p.config.MigrationsFilesPattern = `^.*(\.js|\.ts)$`
+		p.config.MigrationsFilesPattern = `^.*(\.js|\.mjs|\.ts)$`
 	}
 
 	if p.config.TypesDir == "" {
@@ -202,6 +202,9 @@ func (p *plugin) registerMigrations() error {
 			return fmt.Errorf("failed to setup timers for migration %s: %w", file, err)
 		}
 
+		moduleLoader := newESMModuleLoader(vm, eventLoop, p.config.MigrationsDir)
+		moduleLoader.Setup()
+
 		registry.Enable(vm)
 		console.Enable(vm)
 		process.Enable(vm)
@@ -228,7 +231,10 @@ func (p *plugin) registerMigrations() error {
 			p.config.OnInit(vm)
 		}
 
-		_, err := vm.RunScript(defaultScriptPath, string(content))
+		err := eventLoop.Start(func() error {
+			_, runErr := moduleLoader.RunEntrypoint(file, content)
+			return runErr
+		})
 		if err != nil {
 			return fmt.Errorf("failed to run migration %s: %w", file, err)
 		}
@@ -329,12 +335,23 @@ func (p *plugin) registerHooks() error {
 			panic(err)
 		}
 
+		moduleLoader := newESMModuleLoader(executor, eventLoop, absHooksDir)
+		moduleLoader.Setup()
+
 		sharedBinds(executor)
 		return executor, eventLoop
 	})
 
 	// initialize the loader vm
 	loader := sobek.New()
+	loaderEventLoop := NewEventLoop(loader, context.Background())
+	loaderTimers := NewTimers(loader, loaderEventLoop)
+	if err := loaderTimers.SetupGlobally(); err != nil {
+		return fmt.Errorf("failed to setup loader timers: %w", err)
+	}
+	loaderModuleLoader := newESMModuleLoader(loader, loaderEventLoop, absHooksDir)
+	loaderModuleLoader.Setup()
+
 	sharedBinds(loader)
 	hooksBinds(p.app, loader, executors)
 	cronBinds(p.app, loader, executors)
@@ -354,7 +371,10 @@ func (p *plugin) registerHooks() error {
 				}
 			}()
 
-			_, err := loader.RunScript(defaultScriptPath, string(content))
+			err := loaderEventLoop.Start(func() error {
+				_, runErr := loaderModuleLoader.RunEntrypoint(file, content)
+				return runErr
+			})
 			if err != nil {
 				panic(err)
 			}

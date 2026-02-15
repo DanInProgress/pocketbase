@@ -2,6 +2,7 @@ package esmvm
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -294,5 +295,37 @@ func TestTimersNegativeDelay(t *testing.T) {
 	}
 	if !executed {
 		t.Fatal("setTimeout with negative delay should execute callback immediately")
+	}
+}
+
+func TestEventLoopUnhandledPromiseRejection(t *testing.T) {
+	vm := sobek.New()
+	loop := NewEventLoop(vm, context.Background())
+
+	err := loop.Start(func() error {
+		_, err := vm.RunString(`Promise.reject(new Error("boom"))`)
+		return err
+	})
+
+	if err == nil {
+		t.Fatal("Expected unhandled promise rejection error, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("Expected error to contain boom, got: %v", err)
+	}
+}
+
+func TestEventLoopHandledPromiseRejection(t *testing.T) {
+	vm := sobek.New()
+	loop := NewEventLoop(vm, context.Background())
+
+	err := loop.Start(func() error {
+		_, err := vm.RunString(`Promise.reject(new Error("boom")).catch(() => {})`)
+		return err
+	})
+
+	if err != nil {
+		t.Fatalf("Expected handled promise rejection to not fail, got: %v", err)
 	}
 }
