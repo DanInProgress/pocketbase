@@ -2,6 +2,7 @@ package jsvm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -17,16 +18,22 @@ type EventLoop struct {
 	lock                sync.Mutex
 	wakeupCh            chan struct{}
 	ctx                 context.Context
+	pendingRejections   map[*sobek.Promise]struct{}
 }
 
 // NewEventLoop creates a new event loop for the given runtime.
 func NewEventLoop(rt *sobek.Runtime, ctx context.Context) *EventLoop {
-	return &EventLoop{
-		rt:       rt,
-		queue:    make([]func() error, 0, 10),
-		wakeupCh: make(chan struct{}, 1),
-		ctx:      ctx,
+	loop := &EventLoop{
+		rt:                rt,
+		queue:             make([]func() error, 0, 10),
+		wakeupCh:          make(chan struct{}, 1),
+		ctx:               ctx,
+		pendingRejections: map[*sobek.Promise]struct{}{},
 	}
+
+	loop.registerPromiseRejectionTracker()
+
+	return loop
 }
 
 // RegisterCallback reserves a callback slot for async work.
@@ -99,6 +106,10 @@ func (e *EventLoop) Start(firstCallback func() error) error {
 			}
 		}
 
+		if err := e.checkPromiseRejections(); err != nil {
+			return err
+		}
+
 		// If nothing queued but async work pending: wait
 		if awaiting {
 			select {
@@ -167,4 +178,46 @@ func (e *EventLoop) putInfront(tasks []func() error) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 	e.queue = append(tasks, e.queue...)
+}
+
+func (e *EventLoop) registerPromiseRejectionTracker() {
+	e.rt.SetPromiseRejectionTracker(func(p *sobek.Promise, op sobek.PromiseRejectionOperation) {
+		e.lock.Lock()
+		defer e.lock.Unlock()
+
+		switch op {
+		case sobek.PromiseRejectionReject:
+			e.pendingRejections[p] = struct{}{}
+		case sobek.PromiseRejectionHandle:
+			delete(e.pendingRejections, p)
+		}
+	})
+}
+
+func (e *EventLoop) checkPromiseRejections() error {
+	e.lock.Lock()
+
+	var promise *sobek.Promise
+	for p := range e.pendingRejections {
+		promise = p
+		delete(e.pendingRejections, p)
+		break
+	}
+
+	e.lock.Unlock()
+
+	if promise == nil {
+		return nil
+	}
+
+	value := promise.Result()
+	if value == nil || sobek.IsNull(value) || sobek.IsUndefined(value) {
+		return errors.New("unhandled promise rejection")
+	}
+
+	if promiseErr, ok := value.Export().(error); ok {
+		return normalizeException(promiseErr)
+	}
+
+	return fmt.Errorf("unhandled promise rejection: %s", value.String())
 }

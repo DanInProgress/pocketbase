@@ -1008,11 +1008,17 @@ func checkGojaValueForError(app core.App, value sobek.Value) error {
 	case error:
 		return v
 	case *sobek.Promise:
-		// Promise as return result is not officially supported but try to
-		// resolve any thrown exception to avoid silently ignoring it
-		app.Logger().Warn("the handler must a non-async function and not return a Promise")
-		if promiseErr, ok := v.Result().Export().(error); ok {
-			return normalizeException(promiseErr)
+		switch v.State() {
+		case sobek.PromiseStateRejected:
+			if promiseErr, ok := v.Result().Export().(error); ok {
+				return normalizeException(promiseErr)
+			}
+
+			app.Logger().Warn("handler Promise rejected with non-error value", slog.String("value", v.Result().String()))
+		case sobek.PromiseStateFulfilled:
+			if promiseErr, ok := v.Result().Export().(error); ok {
+				return normalizeException(promiseErr)
+			}
 		}
 	}
 
